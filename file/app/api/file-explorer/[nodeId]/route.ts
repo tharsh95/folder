@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server'
 
 const BACKEND_BASE = process.env.NEXT_PUBLIC_BE
 
-export async function PUT(request: Request, { params }: { params: { nodeId: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ nodeId: string }> }) {
+  const resolvedParams = await params
   const body = await request.json()
-  const res = await fetch(`${BACKEND_BASE}/${params.nodeId}`, {
+  const res = await fetch(`${BACKEND_BASE}/${resolvedParams.nodeId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -17,8 +18,9 @@ export async function PUT(request: Request, { params }: { params: { nodeId: stri
   return NextResponse.json(data)
 }
 
-export async function DELETE(_request: Request, { params }: { params: { nodeId: string } }) {
-  const res = await fetch(`${BACKEND_BASE}/${params.nodeId}`, {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ nodeId: string }> }) {
+  const resolvedParams = await params
+  const res = await fetch(`${BACKEND_BASE}/${resolvedParams.nodeId}`, {
     method: 'DELETE'
   })
   if (!res.ok) {
