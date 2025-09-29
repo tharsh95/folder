@@ -1,0 +1,18 @@
+{
+  "name": "file-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "file",
+    "file-be"
+  ],
+  "scripts": {
+    "dev": "npm run -w file dev & npm run -w file-be start:dev",
+    "build": "npm run -w file-be build && npm run -w file build",
+    "start": "npm run -w file-be start & npm run -w file start",
+    "be": "npm run -w file-be start:dev",
+    "fe": "npm run -w file dev"
+  }
+}
+
+

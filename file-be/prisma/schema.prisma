@@ -1,0 +1,22 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model FileNode {
+  id        String   @id @default(cuid())
+  name      String
+  isFolder  Boolean
+  content   String?  // For file content
+  parentId  String?
+  parent    FileNode? @relation("FileNodeToFileNode", fields: [parentId], references: [id])
+  children  FileNode[] @relation("FileNodeToFileNode")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("file_nodes")
+}
