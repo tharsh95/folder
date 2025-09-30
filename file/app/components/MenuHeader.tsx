@@ -1,7 +1,7 @@
 'use client';
 
-import { Folder, Grid, ChevronDown } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { Folder, Grid, ChevronDown, Plus } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setExpandedMany, setSelectedRootId } from '../store/slices/uiSlice';
 
@@ -9,6 +9,9 @@ export default function MenuHeader() {
   const dispatch = useAppDispatch();
   const tree = useAppSelector((state) => state.fileExplorer.data);
   const selectedRootId = useAppSelector((state) => state.ui.selectedRootId);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newRootName, setNewRootName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
   const roots = useMemo(() => (Array.isArray(tree) ? tree.filter((r: any) => r.isFolder) : []), [tree]);
 
@@ -39,6 +42,33 @@ export default function MenuHeader() {
   const handleCollapseAll = () => {
     const ids = collectFolderIds(tree);
     if (ids.length) dispatch(setExpandedMany({ ids, expanded: false }));
+  };
+
+  const handleCreateRoot = async () => {
+    if (!newRootName.trim()) return;
+    
+    setIsCreating(true);
+    try {
+      const response = await fetch('/api/file-explorer/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newRootName.trim() })
+      });
+      
+      if (response.ok) {
+        // Refresh the tree data by reloading the page or refetching
+        window.location.reload();
+      } else {
+        alert('Failed to create root node');
+      }
+    } catch (error) {
+      console.error('Error creating root:', error);
+      alert('Failed to create root node');
+    } finally {
+      setIsCreating(false);
+      setShowCreateModal(false);
+      setNewRootName('');
+    }
   };
 
   return (
@@ -90,7 +120,56 @@ export default function MenuHeader() {
         >
           Collapse All
         </button>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="px-3 md:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm md:text-base flex items-center space-x-2"
+        >
+          <Plus className="h-4 w-4" />
+          <span>New Root</span>
+        </button>
       </div>
+
+      {/* Create Root Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New Root</h3>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Root Name
+              </label>
+              <input
+                type="text"
+                value={newRootName}
+                onChange={(e) => setNewRootName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter root name"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateRoot();
+                  if (e.key === 'Escape') setShowCreateModal(false);
+                }}
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                disabled={isCreating}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateRoot}
+                disabled={!newRootName.trim() || isCreating}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCreating ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
