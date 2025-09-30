@@ -4,10 +4,12 @@ import { Folder, Grid, ChevronDown, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setExpandedMany, setSelectedRootId } from '../store/slices/uiSlice';
+import { optimisticCreateRoot, createRootNode } from '../store/slices/fileExplorerSlice';
+import { useFileExplorer } from '../hooks/useFileExplorer';
 
 export default function MenuHeader() {
   const dispatch = useAppDispatch();
-  const tree = useAppSelector((state) => state.fileExplorer.data);
+  const { data: tree } = useFileExplorer();
   const selectedRootId = useAppSelector((state) => state.ui.selectedRootId);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newRootName, setNewRootName] = useState('');
@@ -47,27 +49,24 @@ export default function MenuHeader() {
   const handleCreateRoot = async () => {
     if (!newRootName.trim()) return;
     
+    const tempId = `temp-${Date.now()}`;
+    const rootName = newRootName.trim();
+    
+    // Optimistic update - immediately add to UI
+    dispatch(optimisticCreateRoot({ id: tempId, name: rootName }));
+    
     setIsCreating(true);
+    setShowCreateModal(false);
+    setNewRootName('');
+    
     try {
-      const response = await fetch('/api/file-explorer/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newRootName.trim() })
-      });
-      
-      if (response.ok) {
-        // Refresh the tree data by reloading the page or refetching
-        window.location.reload();
-      } else {
-        alert('Failed to create root node');
-      }
+      // Call the async thunk which handles the API call
+      await dispatch(createRootNode(rootName)).unwrap();
     } catch (error) {
       console.error('Error creating root:', error);
       alert('Failed to create root node');
     } finally {
       setIsCreating(false);
-      setShowCreateModal(false);
-      setNewRootName('');
     }
   };
 

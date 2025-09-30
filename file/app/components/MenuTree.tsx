@@ -2,10 +2,18 @@
 
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, FilePlus, FolderPlus, Pencil, Trash2 } from 'lucide-react';
-import { setData, setStatus } from '../store/slices/fileExplorerSlice'
+import { 
+  optimisticCreateNode, 
+  optimisticUpdateNode, 
+  optimisticDeleteNode,
+  createNode,
+  updateNode,
+  deleteNode
+} from '../store/slices/fileExplorerSlice'
 import { setSelectedNodeId } from '../store/slices/uiSlice'
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setExpanded } from '../store/slices/uiSlice';
+import { useFileExplorer } from '../hooks/useFileExplorer';
 
 interface MenuTreeItemProps {
   menu: any;
@@ -89,21 +97,13 @@ function MenuTreeItem({ menu, level, ancestors = [], selectedId, onSelect }: Men
                 onChange={(e) => setEditName(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && editName.trim()) {
-                    (async () => {
-                      try {
-                        dispatch(setStatus('loading'))
-                        const res = await fetch(`/api/file-explorer/${menu.id}`, {
-                          method: 'PUT',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ name: editName.trim() })
-                        })
-                        const data = await res.json()
-                        dispatch(setData(data))
-                      } catch (_err) {
-                        dispatch(setStatus('failed'))
-                      }
-                    })()
-                    setIsEditing(false)
+                    const newName = editName.trim();
+                    // Optimistic update
+                    dispatch(optimisticUpdateNode({ id: menu.id, name: newName }));
+                    setIsEditing(false);
+                    
+                    // API call
+                    dispatch(updateNode({ nodeId: menu.id, name: newName }));
                   }
                   if (e.key === 'Escape') setIsEditing(false)
                 }}
@@ -131,16 +131,10 @@ function MenuTreeItem({ menu, level, ancestors = [], selectedId, onSelect }: Men
                 <Pencil className="h-4 w-4 text-gray-700" />
               </button>
               <button className="p-1 rounded hover:bg-red-100" title="Delete" onClick={() => {
-                (async () => {
-                  try {
-                    dispatch(setStatus('loading'))
-                    const res = await fetch(`/api/file-explorer/${menu.id}`, { method: 'DELETE' })
-                    const data = await res.json()
-                    dispatch(setData(data))
-                  } catch (_err) {
-                    dispatch(setStatus('failed'))
-                  }
-                })()
+                // Optimistic update
+                dispatch(optimisticDeleteNode({ id: menu.id }));
+                // API call
+                dispatch(deleteNode(menu.id));
               }}>
                 <Trash2 className="h-4 w-4 text-red-600" />
               </button>
@@ -160,22 +154,26 @@ function MenuTreeItem({ menu, level, ancestors = [], selectedId, onSelect }: Men
               onChange={(e) => setAddName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && addName.trim()) {
-                  (async () => {
-                    try {
-                      dispatch(setStatus('loading'))
-                      const res = await fetch('/api/file-explorer', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ folderId: menu.id, item: addName.trim(), isFolder: addIsFolder })
-                      })
-                      const data = await res.json()
-                      dispatch(setData(data))
-                    } catch (_err) {
-                      dispatch(setStatus('failed'))
-                    }
-                  })()
-                  setAddName('')
-                  setShowAddForm(false)
+                  const tempId = `temp-${Date.now()}`;
+                  const itemName = addName.trim();
+                  
+                  // Optimistic update
+                  dispatch(optimisticCreateNode({ 
+                    id: tempId, 
+                    parentId: menu.id, 
+                    name: itemName, 
+                    isFolder: addIsFolder 
+                  }));
+                  
+                  setAddName('');
+                  setShowAddForm(false);
+                  
+                  // API call
+                  dispatch(createNode({ 
+                    parentId: menu.id, 
+                    name: itemName, 
+                    isFolder: addIsFolder 
+                  }));
                 }
                 if (e.key === 'Escape') setShowAddForm(false)
               }}
@@ -185,22 +183,26 @@ function MenuTreeItem({ menu, level, ancestors = [], selectedId, onSelect }: Men
               className="px-2 py-1 text-xs bg-blue-500 text-white rounded"
               onClick={() => {
                 if (addName.trim()) {
-                  (async () => {
-                    try {
-                      dispatch(setStatus('loading'))
-                      const res = await fetch('/api/file-explorer', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ folderId: menu.id, item: addName.trim(), isFolder: addIsFolder })
-                      })
-                      const data = await res.json()
-                      dispatch(setData(data))
-                    } catch (_err) {
-                      dispatch(setStatus('failed'))
-                    }
-                  })()
-                  setAddName('')
-                  setShowAddForm(false)
+                  const tempId = `temp-${Date.now()}`;
+                  const itemName = addName.trim();
+                  
+                  // Optimistic update
+                  dispatch(optimisticCreateNode({ 
+                    id: tempId, 
+                    parentId: menu.id, 
+                    name: itemName, 
+                    isFolder: addIsFolder 
+                  }));
+                  
+                  setAddName('');
+                  setShowAddForm(false);
+                  
+                  // API call
+                  dispatch(createNode({ 
+                    parentId: menu.id, 
+                    name: itemName, 
+                    isFolder: addIsFolder 
+                  }));
                 }
               }}
             >Add</button>
@@ -238,12 +240,12 @@ function MenuTreeItem({ menu, level, ancestors = [], selectedId, onSelect }: Men
 }
 
 export default function MenuTree() {
-  const tree = useAppSelector((state) => state.fileExplorer.data);
-  const status = useAppSelector((state) => state.fileExplorer.status);
+  const { data: tree, isLoading } = useFileExplorer();
   const selectedRootId = useAppSelector((state) => state.ui.selectedRootId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const dispatch = useAppDispatch();
-  if (status === 'loading' || !tree) {
+  
+  if (isLoading || !tree) {
     return (
       <div className="p-4">
         <div className="animate-pulse">Loading menus...</div>
