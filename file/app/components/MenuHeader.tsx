@@ -62,6 +62,7 @@ export default function MenuHeader() {
     try {
       // Call the async thunk which handles the API call
       await dispatch(createRootNode(rootName)).unwrap();
+      window.location.reload()
     } catch (error) {
       console.error('Error creating root:', error);
       alert('Failed to create root node');

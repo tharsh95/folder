@@ -35,6 +35,7 @@ function MenuTreeItem({ menu, level, ancestors = [], selectedId, onSelect }: Men
   const isExpanded = !!expandedNodes[menu.id];
   const hasChildren = Array.isArray(menu.items) && menu.items.length > 0;
   const isFolder = !!menu.isFolder;
+  const isSelected = selectedId === menu.id;
 
   const handleToggle = () => {
     dispatch(setExpanded({ nodeId: menu.id, expanded: !isExpanded }));
@@ -61,7 +62,7 @@ function MenuTreeItem({ menu, level, ancestors = [], selectedId, onSelect }: Men
           </div>
         )}
         <div
-          className={`flex items-center py-1 px-2 hover:bg-gray-100 cursor-pointer rounded w-full`}
+          className={`flex items-center py-1 px-2 hover:bg-gray-100 cursor-pointer rounded w-full ${isSelected ? 'bg-blue-50 ring-1 ring-blue-200' : ''}`}
           style={{ paddingLeft: `${level === 0 ? 8 : 0}px` }}
         >
           {/* Expand/Collapse Button */}
@@ -82,7 +83,7 @@ function MenuTreeItem({ menu, level, ancestors = [], selectedId, onSelect }: Men
 
           {/* Menu Name */}
           <span
-            className="flex-1 text-sm"
+            className={`flex-1 text-sm ${isSelected ? 'text-blue-700 font-medium' : ''}`}
             onClick={() => {
               if (isFolder) {
                 handleToggle();
